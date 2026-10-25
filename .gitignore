@@ -1,0 +1,7 @@
+dist/
+.local/
+*.so
+*.dylib
+*.dll
+*.h
+*.a
