@@ -11,7 +11,7 @@ import (
 	"cpa-cursor/internal/cursor"
 )
 
-const version = "0.1.0"
+const version = "0.1.1"
 
 type Fail struct {
 	Status int
@@ -461,7 +461,7 @@ func modelList(entries []cursor.Entry) []any {
 		}
 		models = append(models, map[string]any{
 			"ID": e.ID, "Object": "model", "OwnedBy": "cursor", "Type": "cursor",
-			"DisplayName": e.Title, "ContextLength": e.Context,
+			"DisplayName": cursorDisplayName(e), "ContextLength": e.Context,
 			"SupportedInputModalities":  []string{"text", "image"},
 			"SupportedOutputModalities": []string{"text"},
 			"Thinking":                  map[string]any{"ZeroAllowed": true, "DynamicAllowed": true, "Levels": names},
@@ -470,10 +470,25 @@ func modelList(entries []cursor.Entry) []any {
 	return models
 }
 
+func cursorDisplayName(e cursor.Entry) string {
+	title := strings.TrimSpace(e.Title)
+	if title == "" {
+		title = strings.TrimSpace(e.ID)
+	}
+	if title == "" {
+		return "Cursor"
+	}
+	name := "Cursor · " + title
+	if size := strings.TrimSpace(e.Size); size != "" {
+		name += " · " + size
+	}
+	return name
+}
+
 func autoModel() map[string]any {
 	return map[string]any{
 		"ID": "auto", "Object": "model", "OwnedBy": "cursor", "Type": "cursor",
-		"DisplayName": "Auto", "ContextLength": 200000,
+		"DisplayName": "Cursor · Auto", "ContextLength": 200000,
 		"Thinking": map[string]any{"ZeroAllowed": true, "DynamicAllowed": true, "Levels": []string{"none", "low", "medium", "high", "xhigh", "max"}},
 	}
 }
