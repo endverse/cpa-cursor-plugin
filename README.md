@@ -1,20 +1,22 @@
-# Cursor CPA 插件
+# Cursor CPA Plugin
 
-本仓库仅供测试和研发使用。它不是 Cursor 的官方接入，不提供生产环境保障，也不附带服务支持。请只使用你本人有权使用的 Cursor 账号。
+[中文](README.zh-CN.md)
 
-这个插件把 [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) 接到 Cursor 的云端 Agent API。Claude Code 走 Anthropic Messages，Codex CLI 走 OpenAI Responses，两条都由插件直接收发，不经过会丢掉思考签名的 Chat Completions 转换。
+This repository is for testing and research only. It is not an official Cursor integration, it does not offer production guarantees, and it does not include support. Use only a Cursor account you are authorized to use.
 
-插件 id 是 `cursor-agent`。市场里已经有另一个 id 为 `cursor` 的插件，所以这里不用那个名字。
+This plugin connects [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) to Cursor's cloud Agent API. Claude Code uses Anthropic Messages, and the Codex CLI uses OpenAI Responses. The plugin sends and receives both directly. It does not pass them through a Chat Completions translation, which would drop thinking signatures.
 
-每次新的用户消息都会带上完整历史重新发起一次 Run，并用稳定的 `conversation_id` 让 Cursor 把这次请求送回持有 prompt cache 的机器。同一次回复里的工具调用结束后，下一轮用户消息（含工具结果）再导入整段历史。
+The plugin id is `cursor-agent`. The store already has another plugin with the id `cursor`, so this plugin does not use that name.
 
-## 构建
+Each new user message starts a new Run and carries the full history. A stable `conversation_id` sends that request back to the machine that holds the prompt cache. After the tool calls in one reply finish, the next user message, including tool results, imports the whole history again.
+
+## Build
 
 ```bash
 make build
 ```
 
-产物是 `dist/cursor-agent.so`。CPA 用文件名当作插件 id，所以配置里的名字是 `cursor-agent`。macOS 上本地编译出来的仍是 `.so`；放进插件市场的 Darwin 压缩包会把它命名为 `cursor-agent.dylib`。
+The build writes `dist/cursor-agent.so`. CPA treats the filename as the plugin id, so the configured name is `cursor-agent`. A local macOS build is still a `.so`. The Darwin archive published to the plugin store names that library `cursor-agent.dylib`.
 
 ```yaml
 plugins:
@@ -22,28 +24,28 @@ plugins:
   dir: /absolute/path/to/dist
 ```
 
-## 登录
+## Sign in
 
-装好插件后，在 CPA 管理页点 Cursor 的登录，或点插件菜单里的「登录」。页面会直接打开 `cursor.com` 的登录，完成后账号写进 CPA 的 auth 目录，不用手填 JSON 或 API key。
+After installation, open Cursor sign-in from the CPA management page, or choose 登录 in the plugin menu. The page opens the `cursor.com` sign-in flow directly. When it finishes, the account is written into CPA's auth directory. You do not paste JSON or an API key by hand.
 
-浏览器登录大约两个月过期。Cursor 没有给第三方用的刷新接口，过期后再点一次登录。
+Browser sign-in expires after about two months. Cursor does not provide a refresh API for third parties. Sign in again after it expires.
 
-已经有 token 或本机 `cursor-agent login` 凭证时，仍可以放一份 JSON 到 auth 目录：`cursor_auth.type` 取 `oauth`（字段 `access`）、`api`（字段 `key`）或 `cli`。可选 `proxy_url` 只作用于这一个账号；没写时使用进程的 `HTTPS_PROXY`。
+If you already have a token, or credentials from a local `cursor-agent login`, you can still put a JSON file in the auth directory. Set `cursor_auth.type` to `oauth` (field `access`), `api` (field `key`), or `cli`. An optional `proxy_url` applies only to that account. When it is omitted, the process uses `HTTPS_PROXY`.
 
-## 客户端
+## Clients
 
-Claude Code 把 Anthropic Base URL 指到这台 CPA，请求打到 `/v1/messages`。Codex 把接口指到同一台 CPA 的 `/v1/responses`（或 CPA 的 Codex 兼容路径）。模型用账号模型列表里的 id，或者 `auto`。
+Point Claude Code's Anthropic base URL at this CPA. Requests go to `/v1/messages`. Point Codex at `/v1/responses` on the same CPA, or at CPA's Codex-compatible path. Use a model id from the account catalog, or `auto`.
 
-思考内容会以 `cps1.` 开头的不透明字段回给客户端。它只在经过本插件时有效，用来下一轮把同一段推理放回 Cursor 的对话记录。
+Thinking is returned to the client in an opaque field that starts with `cps1.`. It is valid only for requests that pass through this plugin. On the next turn it places the same reasoning back into Cursor's conversation record.
 
-## 边界
+## Limits
 
-- 客户端自己的工具（bash、编辑等）会作为 tool call 交回去，由客户端执行。
-- Cursor 自己的 shell、读文件、网页搜索不会执行。请求里的服务端 `web_search` 会被去掉。
-- `responses/compact` 和 Responses WebSocket 会失败。
-- 工具步骤如果 Cursor 没有在这次 Run 里给出用量，插件按文本长度估算。
-- 出站优先走 HTTP/2 双向 Run；连不上时改走 HTTP/1.1 的 RunSSE + BidiAppend，并在十分钟内继续用这条路径。
+- The client's own tools, such as bash and edit, are returned as tool calls for the client to run.
+- Cursor's own shell, file reads, and web search are not executed. A server-side `web_search` in the request is removed.
+- `responses/compact` and the Responses WebSocket fail.
+- When Cursor does not report usage for a tool step in that Run, the plugin estimates it from the text length.
+- Outbound traffic prefers the HTTP/2 bidirectional Run. If that connection cannot be established, the plugin switches to HTTP/1.1 RunSSE + BidiAppend and keeps that path for ten minutes.
 
-## 协议
+## License
 
-[MIT](LICENSE)。
+[MIT](LICENSE).
